@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<ruleset name="Kevira Mail Gateway">
+  <file>kevira-mail-gateway.php</file><file>src</file><file>uninstall.php</file>
+  <exclude-pattern>vendor/*</exclude-pattern><exclude-pattern>tests/*</exclude-pattern>
+  <rule ref="WordPress-Extra">
+    <exclude name="WordPress.Files.FileName"/>
+    <exclude name="WordPress.NamingConventions.ValidVariableName"/>
+    <exclude name="WordPress.NamingConventions.ValidFunctionName"/>
+    <exclude name="WordPress.DB.PreparedSQL.NotPrepared"/>
+    <exclude name="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode"/>
+    <exclude name="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode"/>
+    <exclude name="Squiz.Commenting.FileComment"/>
+    <exclude name="Squiz.Commenting.ClassComment"/>
+    <exclude name="Squiz.Commenting.FunctionComment"/>
+    <exclude name="Generic.Commenting.DocComment.MissingShort"/>
+  </rule>
+  <config name="minimum_supported_wp_version" value="6.9"/>
+  <arg name="basepath" value="."/><arg name="colors"/><arg value="sp"/>
+</ruleset>

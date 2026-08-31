@@ -1,0 +1,15 @@
+includes:
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+  level: 6
+  paths:
+    - src
+  excludePaths:
+    - src/Admin/Page.php
+    - src/Cli/*
+  scanFiles:
+    - tests/phpstan-definitions.php
+  treatPhpDocTypesAsCertain: false
+  parallel:
+    maximumNumberOfProcesses: 1

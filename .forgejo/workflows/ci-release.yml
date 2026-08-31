@@ -1,0 +1,64 @@
+name: Forgejo CI and Release
+on:
+  workflow_dispatch:
+  push:
+    branches: [deploy, main]
+  pull_request:
+    branches: [main]
+env:
+  MAIN_FILE: kevira-mail-gateway.php
+  SLUG: kevira-mail-gateway
+  TAG_PREFIX: mail-gateway
+jobs:
+  validate-build-release:
+    runs-on: kevira-ci
+    env:
+      COMPOSER_CACHE_DIR: ${{ github.workspace }}/.composer-cache
+      COMPOSER_IPRESOLVE: "4"
+      COMPOSER_PROCESS_TIMEOUT: "600"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: .composer-cache
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+      - name: Validate and test
+        run: |
+          php -v
+          node --version
+          composer --version
+          composer validate --strict
+          composer install --no-interaction --no-progress --prefer-dist
+          composer check
+          find . -name '*.php' -not -path './.git/*' -not -path './vendor/*' -print0 | sort -z | xargs -0 -n1 php -l
+          find tests/smoke -name '*.php' -print0 | sort -z | xargs -0 -n1 php
+      - name: Build package and release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+          version="$(sed -n -E 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' "$MAIN_FILE" | head -n1)"
+          notes="$RUNNER_TEMP/release-notes.md"
+          awk -v heading="## [$version]" 'index($0,heading)==1{found=1;next} found&&/^## \[/{exit} found{print} END{if(!found)exit 1}' CHANGELOG.md > "$notes"
+          package_root="$RUNNER_TEMP/package"; stage="$package_root/$SLUG"; mkdir -p "$stage"
+          rsync -a ./ "$stage/" --exclude='.git/' --exclude='.github/' --exclude='.forgejo/' --exclude='.composer-cache/' --exclude='tests/' --exclude='composer.json' --exclude='composer.lock' --exclude='vendor/bin/' --exclude='*.zip'
+          cd "$package_root"; zip -qr "$GITHUB_WORKSPACE/$SLUG.zip" "$SLUG"
+          unzip -Z1 "$GITHUB_WORKSPACE/$SLUG.zip" > "$RUNNER_TEMP/files.txt"
+          test "$(cut -d/ -f1 "$RUNNER_TEMP/files.txt" | sort -u)" = "$SLUG"
+          grep -Fxq "$SLUG/$MAIN_FILE" "$RUNNER_TEMP/files.txt"
+          grep -Fxq "$SLUG/vendor/autoload.php" "$RUNNER_TEMP/files.txt"
+          ! grep -Eq "^$SLUG/(\.git/|\.github/|\.forgejo/|tests/|vendor/bin/|\.env)" "$RUNNER_TEMP/files.txt"
+          echo "VERSION=$version" >> "$GITHUB_ENV"; echo "NOTES=$notes" >> "$GITHUB_ENV"
+      - name: Publish Forgejo release
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          FORGEJO_TOKEN: ${{ secrets.KEVIRA_RELEASES_TOKEN }}
+          FORGEJO_URL: ${{ vars.FORGEJO_URL }}
+        run: |
+          set -euo pipefail
+          api="${FORGEJO_URL:-https://git.k1mirani.ir}/api/v1/repos/kevira-wordpress/kevira-releases"; tag="$TAG_PREFIX-v$VERSION"
+          jq -n --arg tag "$tag" --arg name "Kevira Mail Gateway v$VERSION" --rawfile body "$NOTES" '{tag_name:$tag,target_commitish:"main",name:$name,body:$body,draft:false,prerelease:false}' > "$RUNNER_TEMP/release.json"
+          response="$(curl --fail-with-body -sS -X POST -H "Authorization: token $FORGEJO_TOKEN" -H 'Content-Type: application/json' --data-binary "@$RUNNER_TEMP/release.json" "$api/releases")"
+          id="$(printf '%s' "$response" | jq -er '.id')"
+          curl --fail-with-body -sS -X POST -H "Authorization: token $FORGEJO_TOKEN" -F "attachment=@$GITHUB_WORKSPACE/$SLUG.zip;type=application/zip" "$api/releases/$id/assets?name=$SLUG.zip" >/dev/null

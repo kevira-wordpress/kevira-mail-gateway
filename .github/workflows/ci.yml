@@ -1,0 +1,36 @@
+name: Kevira Mail Gateway CI
+on:
+  workflow_dispatch:
+  push:
+    branches: [deploy, main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+      - name: Validate and test
+        run: |
+          composer validate --strict
+          composer install --no-interaction --no-progress --prefer-dist
+          composer check
+          find . -name '*.php' -not -path './.git/*' -not -path './vendor/*' -print0 | sort -z | xargs -0 -n1 php -l
+          find tests/smoke -name '*.php' -print0 | sort -z | xargs -0 -n1 php
+      - name: Build production package
+        run: |
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+          package_root="$RUNNER_TEMP/package"; stage="$package_root/kevira-mail-gateway"; mkdir -p "$stage"
+          rsync -a ./ "$stage/" --exclude='.git/' --exclude='.github/' --exclude='.forgejo/' --exclude='tests/' --exclude='composer.json' --exclude='composer.lock' --exclude='vendor/bin/' --exclude='*.zip'
+          cd "$package_root"; zip -qr "$GITHUB_WORKSPACE/kevira-mail-gateway.zip" kevira-mail-gateway
+          unzip -Z1 "$GITHUB_WORKSPACE/kevira-mail-gateway.zip" > "$RUNNER_TEMP/files.txt"
+          test "$(cut -d/ -f1 "$RUNNER_TEMP/files.txt" | sort -u)" = kevira-mail-gateway
+          grep -Fxq 'kevira-mail-gateway/kevira-mail-gateway.php' "$RUNNER_TEMP/files.txt"
+          grep -Fxq 'kevira-mail-gateway/vendor/autoload.php' "$RUNNER_TEMP/files.txt"
+          ! grep -Eq '^kevira-mail-gateway/(\.git/|\.github/|\.forgejo/|tests/|vendor/bin/|\.env)' "$RUNNER_TEMP/files.txt"
