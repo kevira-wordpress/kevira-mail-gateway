@@ -1,0 +1,10 @@
+.kmg-wrap{--kmg:#405cf5;--ink:#182033;--muted:#69758b;max-width:none;margin:20px 20px 0 2px;color:var(--ink)}
+.kmg-hero,.kmg-card,.kmg-stat{background:#fff;border:1px solid #dfe5f0;border-radius:20px;box-shadow:0 12px 36px rgba(30,43,72,.06)}
+.kmg-hero{display:flex;align-items:center;justify-content:space-between;padding:32px;background:linear-gradient(135deg,#fff 50%,#eef2ff)}
+.kmg-hero h1{font-size:34px;margin:8px 0}.kmg-hero p,.kmg-card p{color:var(--muted);margin:0}.kmg-kicker{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--kmg)}
+.kmg-status{border-radius:999px;padding:9px 14px;font-weight:700}.kmg-status.is-good{background:#e7f8ef;color:#147548}.kmg-status.is-warning{background:#fff3dc;color:#946000}
+.kmg-grid{display:grid;gap:16px}.kmg-stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0}.kmg-stat{padding:20px;display:flex;flex-direction:column;gap:6px}.kmg-stat strong{font-size:28px}.kmg-stat span{color:var(--muted)}
+.kmg-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.kmg-card{padding:24px}.kmg-card-head{display:flex;justify-content:space-between;align-items:flex-start}.kmg-card h2{margin:0 0 8px}.kmg-card-head .dashicons{width:46px;height:46px;line-height:46px;text-align:center;border-radius:14px;background:#eef2ff;color:var(--kmg);font-size:22px}
+.kmg-card dl{margin:22px 0}.kmg-card dl div{display:flex;justify-content:space-between;gap:24px;border-top:1px solid #edf0f5;padding:13px 0}.kmg-card dt{color:var(--muted)}.kmg-card dd{margin:0;max-width:65%;word-break:break-word;font-weight:600}.kmg-actions{display:flex;gap:8px;flex-wrap:wrap}.kmg-actions form{margin:0}.kmg-actions .button{border-radius:10px;padding:3px 14px}.kmg-help{margin-top:16px}.kmg-help li{display:inline-block;padding:6px 10px;margin:6px 0 0 6px;border-radius:999px;background:#fff1f1;color:#a52828}
+@media(max-width:900px){.kmg-stats,.kmg-columns{grid-template-columns:1fr 1fr}.kmg-hero{padding:24px}.kmg-hero h1{font-size:28px}}
+@media(max-width:600px){.kmg-stats,.kmg-columns{grid-template-columns:1fr}.kmg-hero{align-items:flex-start;gap:20px;flex-direction:column}}

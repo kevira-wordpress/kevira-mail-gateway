@@ -1,0 +1,38 @@
+name: Release Kevira Mail Gateway
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+      - name: Build release
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer validate --strict
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+          version="$(sed -n -E 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' kevira-mail-gateway.php | head -n1)"
+          notes="$RUNNER_TEMP/release-notes.md"
+          awk -v heading="## [$version]" 'index($0,heading)==1{found=1;next} found&&/^## \[/{exit} found{print} END{if(!found)exit 1}' CHANGELOG.md > "$notes"
+          package_root="$RUNNER_TEMP/package"; stage="$package_root/kevira-mail-gateway"; mkdir -p "$stage"
+          rsync -a ./ "$stage/" --exclude='.git/' --exclude='.github/' --exclude='.forgejo/' --exclude='tests/' --exclude='composer.json' --exclude='composer.lock' --exclude='vendor/bin/' --exclude='*.zip'
+          cd "$package_root"; zip -qr "$GITHUB_WORKSPACE/kevira-mail-gateway.zip" kevira-mail-gateway
+          unzip -Z1 "$GITHUB_WORKSPACE/kevira-mail-gateway.zip" > "$RUNNER_TEMP/files.txt"
+          test "$(cut -d/ -f1 "$RUNNER_TEMP/files.txt" | sort -u)" = kevira-mail-gateway
+          grep -Fxq 'kevira-mail-gateway/kevira-mail-gateway.php' "$RUNNER_TEMP/files.txt"
+          grep -Fxq 'kevira-mail-gateway/vendor/autoload.php' "$RUNNER_TEMP/files.txt"
+          ! grep -Eq '^kevira-mail-gateway/(\.git/|\.github/|\.forgejo/|tests/|vendor/bin/|\.env)' "$RUNNER_TEMP/files.txt"
+          echo "VERSION=$version" >> "$GITHUB_ENV"; echo "NOTES=$notes" >> "$GITHUB_ENV"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.KEVIRA_RELEASES_TOKEN }}
+        run: gh release create "mail-gateway-v$VERSION" kevira-mail-gateway.zip --repo kevira-wordpress/kevira-releases --title "Kevira Mail Gateway v$VERSION" --notes-file "$NOTES"
