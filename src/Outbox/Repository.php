@@ -4,7 +4,8 @@ declare(strict_types=1);
 namespace Kevira\MailGateway\Outbox;
 
 final class Repository {
-	public const MAX_ITEMS = 500;
+	public const MAX_ITEMS              = 500;
+	public const MAX_FAILED_RETRY_BATCH = 50;
 
 	public function table(): string {
 		global $wpdb;
@@ -13,7 +14,7 @@ final class Repository {
 
 	public function enqueue( string $idempotencyKey, string $encryptedPayload, string $error = '' ): bool {
 		global $wpdb;
-		if ( $this->pendingCount() >= self::MAX_ITEMS ) {
+		if ( $this->totalCount() >= self::MAX_ITEMS ) {
 			return false;
 		}
 		$now    = current_time( 'mysql', true );
@@ -35,27 +36,32 @@ final class Repository {
 	/** @return list<object> */
 	public function claimBatch( int $limit = 5 ): array {
 		global $wpdb;
-		$limit = max( 1, min( 10, $limit ) );
-		$rows  = $wpdb->get_results(
+		$limit   = max( 1, min( 10, $limit ) );
+		$now     = current_time( 'mysql', true );
+		$rows    = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT * FROM ' . $this->table() . " WHERE status = 'pending' AND available_at <= %s ORDER BY id ASC LIMIT %d",
-				current_time( 'mysql', true ),
+				$now,
 				$limit
 			)
 		);
-		foreach ( $rows as $row ) {
-			$wpdb->update(
-				$this->table(),
-				array(
-					'status'     => 'processing',
-					'updated_at' => current_time( 'mysql', true ),
-				),
-				array( 'id' => (int) $row->id ),
-				array( '%s', '%s' ),
-				array( '%d' )
+		$claimed = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$result = $wpdb->query(
+				$wpdb->prepare(
+					'UPDATE ' . $this->table() . " SET status = 'processing', updated_at = %s WHERE id = %d AND status = 'pending' AND available_at <= %s",
+					$now,
+					(int) $row->id,
+					$now
+				)
 			);
+			if ( 1 === $result ) {
+				$row->status     = 'processing';
+				$row->updated_at = $now;
+				$claimed[]       = $row;
+			}
 		}
-		return is_array( $rows ) ? $rows : array();
+		return $claimed;
 	}
 
 	public function complete( int $id ): void {
@@ -92,9 +98,18 @@ final class Repository {
 		);
 	}
 
-	public function retryFailed(): int {
+	public function retryFailed( int $limit = self::MAX_FAILED_RETRY_BATCH ): int {
 		global $wpdb;
-		return (int) $wpdb->query( $wpdb->prepare( 'UPDATE ' . $this->table() . " SET status = 'pending', attempts = 0, available_at = %s, updated_at = %s WHERE status = 'failed'", current_time( 'mysql', true ), current_time( 'mysql', true ) ) );
+		$limit = max( 1, min( self::MAX_FAILED_RETRY_BATCH, $limit ) );
+		$now   = current_time( 'mysql', true );
+		return (int) $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE ' . $this->table() . " SET status = 'pending', attempts = 0, available_at = %s, updated_at = %s WHERE id IN (SELECT id FROM (SELECT id FROM " . $this->table() . " WHERE status = 'failed' ORDER BY id ASC LIMIT %d) AS retryable)",
+				$now,
+				$now,
+				$limit
+			)
+		);
 	}
 
 	/** @return list<array{id:int,status:string,attempts:int,available_at:string,last_error:string}> */
@@ -147,6 +162,16 @@ final class Repository {
 	public function pendingCount(): int {
 		$counts = $this->counts();
 		return $counts['pending'] + $counts['processing'];
+	}
+
+	public function totalCount(): int {
+		global $wpdb;
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . $this->table() );
+	}
+
+	public function undecryptableCount(): int {
+		global $wpdb;
+		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . $this->table() . ' WHERE status = %s AND last_error = %s', 'failed', 'payload_decryption_failed' ) );
 	}
 
 	public function cleanup(): int {

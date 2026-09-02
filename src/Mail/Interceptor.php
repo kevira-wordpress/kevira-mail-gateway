@@ -17,7 +17,8 @@ final class Interceptor {
 		private readonly Client $client,
 		private readonly Repository $repository,
 		private readonly Scheduler $scheduler,
-		private readonly RandomSource $random
+		private readonly RandomSource $random,
+		private readonly Encryptor $encryptor
 	) {}
 
 	/**
@@ -36,20 +37,33 @@ final class Interceptor {
 			$idempotency = $this->uuid4();
 			$result      = $this->client->send( $body, $idempotency );
 			if ( $result->acceptedByGateway() ) {
-				update_option( 'kevira_mail_gateway_last_accepted', time(), false );
+				$this->recordAccepted( $result->messageId );
 				return true;
 			}
 			if ( $result->retryable() ) {
-				$encrypted = ( new Encryptor( $this->config->secret() ) )->encrypt( $body );
+				$encrypted = $this->encryptor->encrypt( $body );
 				if ( $this->repository->enqueue( $idempotency, $encrypted, $result->code ) ) {
 					$this->scheduler->schedule();
 					return true;
 				}
 			}
 			return $this->fail( $result->code, $result->message );
+		} catch ( UnsupportedAttachmentsException ) {
+			return $this->fail( 'attachments_unsupported', 'Attachments are not supported by Mail Gateway v1.' );
 		} catch ( \Throwable ) {
 			return $this->fail( 'message_rejected', 'The email could not be normalized or queued safely.' );
 		}
+	}
+
+	private function recordAccepted( string $messageId ): void {
+		update_option(
+			'kevira_mail_gateway_last_accepted',
+			array(
+				'time' => time(),
+				'id'   => $messageId,
+			),
+			false
+		);
 	}
 
 	private function fail( string $code, string $message ): false {

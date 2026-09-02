@@ -14,4 +14,9 @@ final class JsonAndBackoffTest extends TestCase {
 		$this->assertGreaterThanOrEqual( 60, $delay );
 		$this->assertLessThanOrEqual( 72, $delay );
 	}
+
+	public function testResponseDecoderRejectsDuplicateKeys(): void {
+		$this->expectException( \UnexpectedValueException::class );
+		Json::decodeObject( '{"id":"one","nested":{"code":"ok","code":"changed"}}' );
+	}
 }

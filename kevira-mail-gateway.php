@@ -3,7 +3,7 @@
  * Plugin Name:       Kevira Mail Gateway
  * Plugin URI:        https://k1mirani.ir/plugins/kevira-mail-gateway
  * Description:       Securely routes WordPress transactional email through the separate Kevira Mail Gateway service.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 6.9
  * Tested up to:      7.1
  * Requires PHP:      8.1
@@ -23,7 +23,7 @@ declare(strict_types=1);
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; }
 
-define( 'KEVIRA_MAIL_GATEWAY_VERSION', '0.1.0' );
+define( 'KEVIRA_MAIL_GATEWAY_VERSION', '0.2.0' );
 define( 'KEVIRA_MAIL_GATEWAY_FILE', __FILE__ );
 define( 'KEVIRA_MAIL_GATEWAY_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KEVIRA_MAIL_GATEWAY_ASSET_URL', plugin_dir_url( __FILE__ ) );

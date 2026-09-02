@@ -4,25 +4,33 @@ Tags: email, transactional email, security, gateway, outbox
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 
-Securely submits WordPress transactional email to a separate Kevira Mail Gateway and retries temporary failures from an encrypted outbox.
+Securely submits WordPress transactional email to a separate Kevira Mail Gateway and retries temporary failures from an independently encrypted outbox.
 
 == Description ==
 
-Kevira Mail Gateway replaces direct WordPress email transport with a signed HTTPS request. It validates recipients, headers and attachments, stores retryable messages in a bounded encrypted queue, and exposes safe operational status in Kevira and Site Health.
+Kevira Mail Gateway replaces direct WordPress email transport with a signed HTTPS request. It validates recipients, supported headers and content, stores retryable messages in a bounded encrypted queue, and exposes safe operational status in Kevira and Site Health.
 
 No mail-provider credentials are stored in WordPress. The plugin does not contain SMTP transport, external telemetry or a silent fallback.
 
+Gateway v1 does not support attachments. Any wp_mail() call containing an attachment fails explicitly through wp_mail_failed; files are never read or transmitted.
+
 == Installation ==
 
-1. Configure the required server constants and secret file.
+1. Configure the required server constants, HMAC secret file and independent queue-key file.
 2. Install and activate the plugin through Kevira Hub or WordPress.
 3. Open Kevira > Mail Gateway and verify connection health.
 4. Send a test message.
 
 == Changelog ==
+
+= 0.2.0 =
+* Adopted the canonical Gateway v1 payload, response and error contracts.
+* Added a separate queue encryption key and migration-safe support for draining 0.1.0 queue records.
+* Hardened secret paths, queue capacity, atomic claiming, worker locks and destructive CLI operations.
+* Attachments now fail closed because Gateway v1 does not support them.
 
 = 0.1.0 =
 * Initial secure client, signed delivery, encrypted outbox, admin dashboard, Site Health and WP-CLI support.

@@ -13,6 +13,9 @@ final class LockAndCleanupTest extends TestCase {
 		$first = new Lock();
 		$second = new Lock();
 		$this->assertTrue( $first->acquire( 60 ) );
+		$this->assertGreaterThanOrEqual( time() + 120, $GLOBALS['kmg_test_options']['kevira_mail_gateway_worker_lock']['expires'] );
+		$this->assertTrue( $first->renew( 180 ) );
+		$this->assertGreaterThanOrEqual( time() + 180, $GLOBALS['kmg_test_options']['kevira_mail_gateway_worker_lock']['expires'] );
 		$this->assertFalse( $second->acquire( 60 ) );
 		$GLOBALS['kmg_test_options']['kevira_mail_gateway_worker_lock']['expires'] = time() - 1;
 		$this->assertTrue( $second->acquire( 60 ) );

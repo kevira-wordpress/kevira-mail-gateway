@@ -19,35 +19,40 @@ final class Worker {
 	) {}
 
 	public function run(): void {
-		if ( ! $this->lock->acquire() ) {
+		if ( ! $this->lock->acquire( Lock::DEFAULT_TTL ) ) {
 			return;
 		}
 		try {
 			$this->repository->resetProcessing();
-			foreach ( $this->repository->claimBatch() as $row ) {
+			$rows = $this->repository->claimBatch();
+			foreach ( $rows as $row ) {
+				if ( ! $this->lock->renew( Lock::DEFAULT_TTL ) ) {
+					break;
+				}
 				$attempts = (int) $row->attempts + 1;
 				try {
-					$body   = $this->encryptor->decrypt( (string) $row->payload_encrypted );
-					$result = $this->client->send( $body, (string) $row->idempotency_key );
+					$body = $this->encryptor->decrypt( (string) $row->payload_encrypted );
 				} catch ( \Throwable ) {
-					$this->repository->fail( (int) $row->id, $attempts, 'payload_authentication_failed' );
+					$this->repository->fail( (int) $row->id, $attempts, 'payload_decryption_failed' );
+					$this->recordFailure( 'payload_decryption_failed' );
 					continue;
 				}
+				$result = $this->client->send( $body, (string) $row->idempotency_key );
 				if ( $result->acceptedByGateway() ) {
 					$this->repository->complete( (int) $row->id );
-					update_option( 'kevira_mail_gateway_last_accepted', time(), false );
+					update_option(
+						'kevira_mail_gateway_last_accepted',
+						array(
+							'time' => time(),
+							'id'   => $result->messageId,
+						),
+						false
+					);
 				} elseif ( $result->retryable() && $attempts < self::MAX_ATTEMPTS ) {
 					$this->repository->retry( (int) $row->id, $attempts, $this->backoff->seconds( $attempts ), $result->code );
 				} else {
 					$this->repository->fail( (int) $row->id, $attempts, $result->code );
-					update_option(
-						'kevira_mail_gateway_last_failure',
-						array(
-							'time' => time(),
-							'code' => $result->code,
-						),
-						false
-					);
+					$this->recordFailure( $result->code );
 				}
 			}
 			$this->repository->cleanup();
@@ -57,5 +62,16 @@ final class Worker {
 		} finally {
 			$this->lock->release();
 		}
+	}
+
+	private function recordFailure( string $code ): void {
+		update_option(
+			'kevira_mail_gateway_last_failure',
+			array(
+				'time' => time(),
+				'code' => $code,
+			),
+			false
+		);
 	}
 }
