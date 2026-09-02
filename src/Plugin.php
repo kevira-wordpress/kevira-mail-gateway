@@ -28,14 +28,35 @@ use Kevira\MailGateway\Support\SystemClock;
 
 final class Plugin {
 	public function register(): void {
-		$config      = Config::fromEnvironment();
-		$random      = new SecureRandom();
-		$client      = new Client( $config, new WordPressHttp(), new Signer( $config, new SystemClock(), $random ), new ResponseClassifier() );
-		$repository  = new Repository();
-		$scheduler   = new WordPressScheduler();
-		$factory     = new MessageFactory( $config, new HeaderNormalizer(), new AttachmentLoader() );
-		$interceptor = new Interceptor( $config, $factory, $client, $repository, $scheduler, $random );
-		add_filter( 'pre_wp_mail', array( $interceptor, 'intercept' ), 10, 2 );
+		$config     = Config::fromEnvironment();
+		$random     = new SecureRandom();
+		$client     = new Client( $config, new WordPressHttp(), new Signer( $config, new SystemClock(), $random ), new ResponseClassifier() );
+		$repository = new Repository();
+		$scheduler  = new WordPressScheduler();
+		$factory    = new MessageFactory( $config, new HeaderNormalizer(), new AttachmentLoader() );
+		try {
+			$encryptor = new Encryptor( $config->queueKey(), $config->secret() );
+		} catch ( \Throwable ) {
+			$encryptor = null;
+		}
+		if ( $encryptor ) {
+			$interceptor = new Interceptor( $config, $factory, $client, $repository, $scheduler, $random, $encryptor );
+			add_filter( 'pre_wp_mail', array( $interceptor, 'intercept' ), 10, 2 );
+		} else {
+			add_filter(
+				'pre_wp_mail',
+				static function ( null|bool $shortCircuit, array $attributes ): bool {
+					unset( $attributes );
+					if ( null !== $shortCircuit ) {
+						return $shortCircuit;
+					}
+					do_action( 'wp_mail_failed', new \WP_Error( 'kevira_mail_gateway_queue_key_unavailable', 'Kevira Mail Gateway queue encryption is not configured.' ) );
+					return false;
+				},
+				10,
+				2
+			);
+		}
 
 		$page    = new Page( $config, $client, $repository );
 		$menu    = new Menu( $page );
@@ -49,7 +70,7 @@ final class Plugin {
 
 		$workerFactory = function () use ( $config, $client, $repository, $scheduler ): ?Worker {
 			try {
-				return new Worker( $repository, new Encryptor( $config->secret() ), $client, new Lock(), new Backoff(), $scheduler );
+				return new Worker( $repository, new Encryptor( $config->queueKey(), $config->secret() ), $client, new Lock(), new Backoff(), $scheduler );
 			} catch ( \Throwable ) {
 				return null;
 			}

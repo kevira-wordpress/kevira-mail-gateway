@@ -27,9 +27,11 @@ final class Page {
 			$health = $this->client->health();
 			set_transient( 'kevira_mail_gateway_health', $health, MINUTE_IN_SECONDS );
 		}
-		$counts   = $this->repository->counts();
-		$accepted = (int) get_option( 'kevira_mail_gateway_last_accepted', 0 );
-		$failure  = get_option( 'kevira_mail_gateway_last_failure', array() );
+		$counts        = $this->repository->counts();
+		$accepted      = get_option( 'kevira_mail_gateway_last_accepted', array() );
+		$acceptedTime  = is_array( $accepted ) ? (int) ( $accepted['time'] ?? 0 ) : (int) $accepted;
+		$failure       = get_option( 'kevira_mail_gateway_last_failure', array() );
+		$undecryptable = $this->repository->undecryptableCount();
 		?>
 		<div class="wrap kmg-wrap" dir="rtl">
 			<header class="kmg-hero">
@@ -48,11 +50,11 @@ final class Page {
 					<dl><div><dt><?php esc_html_e( 'Gateway URL', 'kevira-mail-gateway' ); ?></dt><dd><?php echo '' === $this->config->gatewayUrl() ? '—' : esc_html( $this->config->gatewayUrl() ); ?></dd></div><div><dt><?php esc_html_e( 'Client ID', 'kevira-mail-gateway' ); ?></dt><dd><?php echo '' === $this->config->clientId() ? '—' : esc_html( $this->config->clientId() ); ?></dd></div><div><dt><?php esc_html_e( 'Sender profile', 'kevira-mail-gateway' ); ?></dt><dd><?php echo esc_html( $this->config->senderProfile() ); ?></dd></div><div><dt><?php esc_html_e( 'Secret', 'kevira-mail-gateway' ); ?></dt><dd><?php echo in_array( 'secret_unavailable', $errors, true ) ? esc_html__( 'Unavailable', 'kevira-mail-gateway' ) : esc_html__( 'Loaded securely', 'kevira-mail-gateway' ); ?></dd></div></dl>
 				</section>
 				<section class="kmg-card"><div class="kmg-card-head"><div><h2><?php esc_html_e( 'Operations', 'kevira-mail-gateway' ); ?></h2><p><?php esc_html_e( 'Health and recent delivery state without exposing message data.', 'kevira-mail-gateway' ); ?></p></div><span class="dashicons dashicons-email-alt"></span></div>
-					<dl><div><dt><?php esc_html_e( 'Gateway health', 'kevira-mail-gateway' ); ?></dt><dd><?php echo ! empty( $health['healthy'] ) ? esc_html__( 'Healthy', 'kevira-mail-gateway' ) : esc_html__( 'Unavailable', 'kevira-mail-gateway' ); ?></dd></div><div><dt><?php esc_html_e( 'Client authentication', 'kevira-mail-gateway' ); ?></dt><dd><?php echo empty( $errors ) ? esc_html__( 'Credentials loaded; verified on first delivery', 'kevira-mail-gateway' ) : esc_html__( 'Not ready', 'kevira-mail-gateway' ); ?></dd></div><div><dt><?php esc_html_e( 'Last accepted', 'kevira-mail-gateway' ); ?></dt><dd><?php echo $accepted ? esc_html( wp_date( 'Y-m-d H:i', $accepted ) ) : '—'; ?></dd></div><div><dt><?php esc_html_e( 'Last failure', 'kevira-mail-gateway' ); ?></dt><dd><?php echo is_array( $failure ) && ! empty( $failure['code'] ) ? esc_html( (string) $failure['code'] ) : '—'; ?></dd></div></dl>
+					<dl><div><dt><?php esc_html_e( 'Gateway health', 'kevira-mail-gateway' ); ?></dt><dd><?php echo ! empty( $health['healthy'] ) ? esc_html__( 'Healthy', 'kevira-mail-gateway' ) : esc_html__( 'Unavailable', 'kevira-mail-gateway' ); ?></dd></div><div><dt><?php esc_html_e( 'Client authentication', 'kevira-mail-gateway' ); ?></dt><dd><?php echo empty( $errors ) ? esc_html__( 'Credentials loaded; verified on first delivery', 'kevira-mail-gateway' ) : esc_html__( 'Not ready', 'kevira-mail-gateway' ); ?></dd></div><div><dt><?php esc_html_e( 'Last accepted', 'kevira-mail-gateway' ); ?></dt><dd><?php echo $acceptedTime > 0 ? esc_html( wp_date( 'Y-m-d H:i', $acceptedTime ) ) : '—'; ?></dd></div><div><dt><?php esc_html_e( 'Gateway message ID', 'kevira-mail-gateway' ); ?></dt><dd><?php echo is_array( $accepted ) && ! empty( $accepted['id'] ) ? esc_html( (string) $accepted['id'] ) : '—'; ?></dd></div><div><dt><?php esc_html_e( 'Last failure', 'kevira-mail-gateway' ); ?></dt><dd><?php echo is_array( $failure ) && ! empty( $failure['code'] ) ? esc_html( (string) $failure['code'] ) : '—'; ?></dd></div><div><dt><?php esc_html_e( 'Undecryptable queue records', 'kevira-mail-gateway' ); ?></dt><dd><?php echo esc_html( number_format_i18n( $undecryptable ) ); ?></dd></div></dl>
 					<div class="kmg-actions"><?php $this->actionForm( 'kevira_mail_gateway_test', __( 'Send test email', 'kevira-mail-gateway' ), true ); ?><?php $this->actionForm( 'kevira_mail_gateway_retry', __( 'Retry failed', 'kevira-mail-gateway' ) ); ?><?php $this->actionForm( 'kevira_mail_gateway_refresh', __( 'Refresh health', 'kevira-mail-gateway' ) ); ?></div>
 				</section>
 			</div>
-			<section class="kmg-card kmg-help"><h2><?php esc_html_e( 'Server configuration', 'kevira-mail-gateway' ); ?></h2><p><?php esc_html_e( 'Define KEVIRA_MAIL_GATEWAY_URL, KEVIRA_MAIL_CLIENT_ID, KEVIRA_MAIL_SECRET_FILE and KEVIRA_MAIL_SENDER_PROFILE outside the database. The secret value is never shown or stored by WordPress.', 'kevira-mail-gateway' ); ?></p>
+			<section class="kmg-card kmg-help"><h2><?php esc_html_e( 'Server configuration', 'kevira-mail-gateway' ); ?></h2><p><?php esc_html_e( 'Define KEVIRA_MAIL_GATEWAY_URL, KEVIRA_MAIL_CLIENT_ID, KEVIRA_MAIL_SECRET_FILE, KEVIRA_MAIL_QUEUE_KEY_FILE and KEVIRA_MAIL_SENDER_PROFILE outside the database. Key values are never shown or stored by WordPress.', 'kevira-mail-gateway' ); ?></p>
 			<?php
 			if ( $errors ) :
 				?>
