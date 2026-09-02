@@ -2,6 +2,14 @@
 
 User-facing changes to Kevira Mail Gateway are recorded here.
 
+## [0.2.1] - 2026-09-02
+
+### Changed
+
+- هماهنگی کامل صفحه مدیریت Mail Gateway با زبان طراحی مشترک «Kevira Plugins».
+- افزودن ناوبری مستقل افزونه‌های فعال Kevira بدون وابستگی به فعال‌بودن Kevira Auth.
+- فارسی‌سازی وضعیت اتصال، عملیات صف، خطاهای پیکربندی و پیام‌های مدیریتی.
+
 ## [0.2.0] - 2026-09-02
 
 ### Changed
