@@ -4,12 +4,12 @@ declare(strict_types=1);
 $root = dirname( __DIR__, 2 );
 $main = file_get_contents( $root . '/kevira-mail-gateway.php' );
 $changelog = file_get_contents( $root . '/CHANGELOG.md' );
-foreach ( array( 'Plugin Name:       Kevira Mail Gateway', 'Version:           0.2.1', 'Update URI:        https://github.com/kevira-wordpress/kevira-releases', 'register_activation_hook', 'plugins_loaded' ) as $needle ) {
+foreach ( array( 'Plugin Name:       Kevira Mail Gateway', 'Version:           0.2.2', 'Update URI:        https://github.com/kevira-wordpress/kevira-releases', 'register_activation_hook', 'plugins_loaded' ) as $needle ) {
 	if ( ! str_contains( (string) $main, $needle ) ) {
 		throw new RuntimeException( 'Missing plugin contract: ' . $needle );
 	}
 }
-if ( ! str_contains( (string) $changelog, '## [0.2.1]' ) ) {
+if ( ! str_contains( (string) $changelog, '## [0.2.2]' ) ) {
 	throw new RuntimeException( 'Release changelog is missing.' );
 }
 $plugin = file_get_contents( $root . '/src/Plugin.php' );

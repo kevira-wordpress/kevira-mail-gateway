@@ -2,6 +2,10 @@
 
 User-facing changes to Kevira Mail Gateway are recorded here.
 
+## [0.2.2] - 2026-11-19
+
+- Admin UI: smaller page title, descriptive subtitle removed and admin content uses the full available width. No functional or settings changes.
+
 ## [0.2.1] - 2026-09-02
 
 ### Changed

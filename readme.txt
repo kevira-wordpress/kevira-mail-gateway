@@ -4,7 +4,7 @@ Tags: email, transactional email, security, gateway, outbox
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.2.1
+Stable tag: 0.2.2
 License: GPLv2 or later
 
 Securely submits WordPress transactional email to a separate Kevira Mail Gateway and retries temporary failures from an independently encrypted outbox.
@@ -25,6 +25,12 @@ Gateway v1 does not support attachments. Any wp_mail() call containing an attach
 4. Send a test message.
 
 == Changelog ==
+
+= 0.2.2 =
+* Admin UI: smaller page title, descriptive subtitle removed and admin content uses the full available width. No functional or settings changes.
+
+= 0.2.2 =
+* Admin UI: smaller page title, descriptive subtitle removed and admin content uses the full available width. No functional or settings changes.
 
 = 0.2.1 =
 * Unified the Mail Gateway dashboard with the shared Kevira Plugins administration design.

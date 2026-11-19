@@ -39,7 +39,7 @@ final class Page {
 		?>
 		<div class="wrap kevira-admin kmg-admin" dir="rtl">
 			<header class="kevira-admin__header">
-				<div><p class="kevira-admin__eyebrow">Kevira Plugins</p><h1><?php esc_html_e( 'درگاه ایمیل کویرا', 'kevira-mail-gateway' ); ?></h1><p><?php esc_html_e( 'ارسال امن ایمیل‌های وردپرس و مدیریت صف تلاش مجدد، بدون نگهداری اطلاعات محرمانه در پنل.', 'kevira-mail-gateway' ); ?></p></div>
+				<div><p class="kevira-admin__eyebrow">Kevira Plugins</p><h1><?php esc_html_e( 'درگاه ایمیل کویرا', 'kevira-mail-gateway' ); ?></h1></div>
 				<div class="kmg-header-state"><span class="kevira-admin__version"><?php echo esc_html( KEVIRA_MAIL_GATEWAY_VERSION ); ?></span><span class="kevira-admin__status <?php echo empty( $errors ) && ! empty( $health['healthy'] ) ? 'kevira-admin__status--success' : 'kevira-admin__status--warning'; ?>"><?php echo empty( $errors ) && ! empty( $health['healthy'] ) ? esc_html__( 'آماده', 'kevira-mail-gateway' ) : esc_html__( 'نیازمند بررسی', 'kevira-mail-gateway' ); ?></span></div>
 			</header>
 			<?php $this->productNavigation(); ?>
